@@ -1,0 +1,98 @@
+name: PR Action
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  diagnostics:
+    # Always runs - prints debug info about the event
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dump GitHub context
+        env:
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+        run: echo "$GITHUB_CONTEXT"
+
+      - name: Dump event payload
+        env:
+          EVENT_PAYLOAD: ${{ toJson(github.event) }}
+        run: echo "$EVENT_PAYLOAD"
+
+      - name: PR Head Repo Info
+        run: |
+          echo "=== HEAD REPO ==="
+          echo "full_name: ${{ github.event.pull_request.head.repo.full_name }}"
+          echo "owner.login: ${{ github.event.pull_request.head.repo.owner.login }}"
+          echo "owner.id: ${{ github.event.pull_request.head.repo.owner.id }}"
+          echo "owner.type: ${{ github.event.pull_request.head.repo.owner.type }}"
+          echo "fork: ${{ github.event.pull_request.head.repo.fork }}"
+          echo "private: ${{ github.event.pull_request.head.repo.private }}"
+          echo "visibility: ${{ github.event.pull_request.head.repo.visibility }}"
+          echo "head.ref: ${{ github.event.pull_request.head.ref }}"
+          echo "head.sha: ${{ github.event.pull_request.head.sha }}"
+
+      - name: PR Base Repo Info
+        run: |
+          echo "=== BASE REPO ==="
+          echo "full_name: ${{ github.event.pull_request.base.repo.full_name }}"
+          echo "owner.login: ${{ github.event.pull_request.base.repo.owner.login }}"
+          echo "owner.id: ${{ github.event.pull_request.base.repo.owner.id }}"
+          echo "owner.type: ${{ github.event.pull_request.base.repo.owner.type }}"
+          echo "fork: ${{ github.event.pull_request.base.repo.fork }}"
+          echo "base.ref: ${{ github.event.pull_request.base.ref }}"
+          echo "base.sha: ${{ github.event.pull_request.base.sha }}"
+
+      - name: PR Metadata
+        run: |
+          echo "=== PR INFO ==="
+          echo "number: ${{ github.event.pull_request.number }}"
+          echo "title: ${{ github.event.pull_request.title }}"
+          echo "state: ${{ github.event.pull_request.state }}"
+          echo "draft: ${{ github.event.pull_request.draft }}"
+          echo "merged: ${{ github.event.pull_request.merged }}"
+          echo "mergeable: ${{ github.event.pull_request.mergeable }}"
+          echo "author: ${{ github.event.pull_request.user.login }}"
+          echo "author_association: ${{ github.event.pull_request.author_association }}"
+
+      - name: GitHub Context Variables
+        run: |
+          echo "=== GITHUB CONTEXT ==="
+          echo "github.actor: ${{ github.actor }}"
+          echo "github.triggering_actor: ${{ github.triggering_actor }}"
+          echo "github.repository: ${{ github.repository }}"
+          echo "github.repository_owner: ${{ github.repository_owner }}"
+          echo "github.event_name: ${{ github.event_name }}"
+          echo "github.ref: ${{ github.ref }}"
+          echo "github.sha: ${{ github.sha }}"
+          echo "github.head_ref: ${{ github.head_ref }}"
+          echo "github.base_ref: ${{ github.base_ref }}"
+
+      - name: Condition Evaluation
+        run: |
+          echo "=== CONDITION CHECK ==="
+          echo "head.repo.fork: ${{ github.event.pull_request.head.repo.fork }}"
+          echo "head owner == base owner: ${{ github.event.pull_request.head.repo.owner.login == github.event.pull_request.base.repo.owner.login }}"
+          echo "head owner == repository_owner: ${{ github.event.pull_request.head.repo.owner.login == github.repository_owner }}"
+          echo "Would run-script job run? fork=${{ github.event.pull_request.head.repo.fork }} AND same_owner=${{ github.event.pull_request.head.repo.owner.login == github.event.pull_request.base.repo.owner.login }}"
+
+  run-script:
+    # Only run if PR is from a fork AND the fork is owned by the same org
+    if: |
+      github.event.pull_request.head.repo.fork == true &&
+      github.event.pull_request.head.repo.owner.login == github.event.pull_request.base.repo.owner.login
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout PR code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run script
+        run: node index.js
