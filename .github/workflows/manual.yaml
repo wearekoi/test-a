@@ -1,0 +1,50 @@
+name: Manual Dispatch
+
+on:
+  repository_dispatch:
+    types: [test]
+
+jobs:
+  diagnostics:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dump GitHub context
+        env:
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+        run: echo "$GITHUB_CONTEXT"
+
+      - name: Dump event payload
+        env:
+          EVENT_PAYLOAD: ${{ toJson(github.event) }}
+        run: echo "$EVENT_PAYLOAD"
+
+      - name: Dump client payload
+        run: |
+          echo "=== CLIENT PAYLOAD ==="
+          echo "event_type: ${{ github.event.action }}"
+          echo "client_payload: ${{ toJson(github.event.client_payload) }}"
+
+      - name: GitHub Context Variables
+        run: |
+          echo "=== GITHUB CONTEXT ==="
+          echo "github.actor: ${{ github.actor }}"
+          echo "github.triggering_actor: ${{ github.triggering_actor }}"
+          echo "github.repository: ${{ github.repository }}"
+          echo "github.repository_owner: ${{ github.repository_owner }}"
+          echo "github.event_name: ${{ github.event_name }}"
+          echo "github.ref: ${{ github.ref }}"
+          echo "github.sha: ${{ github.sha }}"
+
+  run-script:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run script
+        run: node index.js
